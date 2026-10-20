@@ -1,0 +1,49 @@
+{
+    "Tools": {
+        "QString TemplatePlugin::hello(QString)": {
+            "name": "template/hello",
+            "title": "Hello",
+            "description": "Return a friendly greeting.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Who to greet (default: world)."
+                    }
+                }
+            }
+        },
+        "double TemplatePlugin::add(double,double)": {
+            "name": "template/add",
+            "title": "Add",
+            "description": "Return a + b.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "a": { "type": "number", "description": "left operand" },
+                    "b": { "type": "number", "description": "right operand" }
+                },
+                "required": ["a", "b"]
+            }
+        },
+        "QVariant TemplatePlugin::info()": {
+            "name": "template/info",
+            "title": "Plugin info",
+            "description": "Return structured information about the plugin.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    "Resources": {
+        "template://info": {
+            "name": "template-info",
+            "title": "Template info",
+            "description": "JSON metadata exposed as a resource.",
+            "mimeType": "application/json",
+            "signature": "QString TemplatePlugin::readInfo(QString)"
+        }
+    }
+}
