@@ -106,11 +106,12 @@ then `list`, and `call` with `example/add` and `{"a":2,"b":40}`.
 
 ### Elicitation
 
-If a tool needs to ask the user a question, use the host handle stored in
-`initialize`:
+If a tool needs to ask the user a question, call the host's `elicit` service
+(the host services are listed by `getFuncs()`). The request and result are
+exchanged as JSON:
 
 ```cpp
-const mcp::ElicitResult answer = m_host.elicit(mcp::ElicitFormRequestParams{
+const mcp::ElicitRequestParams params = mcp::ElicitFormRequestParams{
     .message = "Proceed?",
     .requested_schema = QJsonObject{
         {"type", "object"},
@@ -119,7 +120,12 @@ const mcp::ElicitResult answer = m_host.elicit(mcp::ElicitFormRequestParams{
         }},
         {"required", QJsonArray{"confirm"}},
     },
-});
+};
+const QVariant encoded = m_host.callFunc(
+    "QVariant mcp::Host::elicit(QVariant)",
+    {QVariant::fromValue(mcp::to_json(params))});
+const mcp::ElicitResult answer = mcp::from_json<mcp::ElicitResult>(
+    encoded.value<QJsonValue>());
 if (answer.action != mcp::ElicitAction::accept) {
     throw std::runtime_error("cancelled by user");
 }
@@ -137,8 +143,13 @@ HTTP).
 - `shutdown()` runs before the library is detached.
 - Functions run synchronously on the thread dispatching the tool call; keep
   them thread-safe if the server may handle concurrent requests.
-- A plugin that calls `m_host.claimLogging(...)` becomes pinned and is never
-  unloaded (its sink runs code inside the plugin library).
+- Host services are ordinary registry entries: `getFuncs()` lists
+  `bool mcp::Host::claimLogging(QString)` and
+  `QVariant mcp::Host::elicit(QVariant)`, and both are invoked through
+  `callFunc` (they are not members of `HostInterface`).
+- To own diagnostic logging, call `claimLogging` with the canonical signature
+  of your own `void <Class>::log(int, QString)` slot. The claiming plugin is
+  pinned and never unloaded (its sink runs code inside the plugin library).
 
 ## License
 
