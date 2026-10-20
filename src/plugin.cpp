@@ -10,6 +10,7 @@
 #include <QMetaObject>
 
 #include <cstring>
+#include <QString>
 
 namespace mcp {
 
