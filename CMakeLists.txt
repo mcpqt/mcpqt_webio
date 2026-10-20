@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(mcpqt_template_plugin VERSION 0.1.0 LANGUAGES CXX)
+project(mcpqt_example_plugin VERSION 0.1.0 LANGUAGES CXX)
 
 # ----- C++ / Qt boilerplate ------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
@@ -33,15 +33,15 @@ endif()
 
 # ----- The plugin module ---------------------------------------------------
 #
-# MODULE + no "lib" prefix produces mcpqt_template_plugin.so/.dylib/.dll,
+# MODULE + no "lib" prefix produces mcpqt_example_plugin.so/.dylib/.dll,
 # which is what QPluginLoader expects when pointed at a file.
-# plugin.cpp/plugin.h are vendored copies of the host's plugin ABI so this
+# src/plugin.cpp and src/plugin.h are vendored copies of the host ABI so this
 # repository is self-contained; keep them in sync if the ABI changes.
-add_library(mcpqt_template_plugin MODULE template_plugin.cpp plugin.cpp)
-set_target_properties(mcpqt_template_plugin PROPERTIES PREFIX "")
-target_link_libraries(mcpqt_template_plugin PRIVATE mcp::mcp)
+add_library(mcpqt_example_plugin MODULE src/example_plugin.cpp src/plugin.cpp)
+set_target_properties(mcpqt_example_plugin PROPERTIES PREFIX "")
+target_link_libraries(mcpqt_example_plugin PRIVATE mcp::mcp)
 
-target_compile_options(mcpqt_template_plugin PRIVATE
+target_compile_options(mcpqt_example_plugin PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
         -Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive->

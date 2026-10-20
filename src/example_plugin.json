@@ -1,7 +1,7 @@
 {
     "Tools": {
-        "QString TemplatePlugin::hello(QString)": {
-            "name": "template/hello",
+        "QString ExamplePlugin::hello(QString)": {
+            "name": "example/hello",
             "title": "Hello",
             "description": "Return a friendly greeting.",
             "inputSchema": {
@@ -14,8 +14,8 @@
                 }
             }
         },
-        "double TemplatePlugin::add(double,double)": {
-            "name": "template/add",
+        "double ExamplePlugin::add(double,double)": {
+            "name": "example/add",
             "title": "Add",
             "description": "Return a + b.",
             "inputSchema": {
@@ -27,8 +27,8 @@
                 "required": ["a", "b"]
             }
         },
-        "QVariant TemplatePlugin::info()": {
-            "name": "template/info",
+        "QVariant ExamplePlugin::info()": {
+            "name": "example/info",
             "title": "Plugin info",
             "description": "Return structured information about the plugin.",
             "inputSchema": {
@@ -38,12 +38,12 @@
         }
     },
     "Resources": {
-        "template://info": {
-            "name": "template-info",
-            "title": "Template info",
+        "example://info": {
+            "name": "example-info",
+            "title": "Example info",
             "description": "JSON metadata exposed as a resource.",
             "mimeType": "application/json",
-            "signature": "QString TemplatePlugin::readInfo(QString)"
+            "signature": "QString ExamplePlugin::readInfo(QString)"
         }
     }
 }
