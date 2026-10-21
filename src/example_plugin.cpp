@@ -22,68 +22,78 @@
 
 #include <string>
 
-namespace {
+namespace
+{
 
-class ExamplePlugin : public mcp::PluginInterface {
+  class ExamplePlugin : public mcp::PluginInterface
+  {
     Q_OBJECT
 
     // Metadata read by the host. "id" is required and should be unique among
     // loaded plugins; "version"/"description" are optional.
-    Q_CLASSINFO("id", "example")
-    Q_CLASSINFO("version", "0.1.0")
-    Q_CLASSINFO("description", "Example plugin — replace with your own.")
+    Q_CLASSINFO ("id", "example")
+    Q_CLASSINFO ("version", "0.1.0")
+    Q_CLASSINFO ("description", "Example plugin — replace with your own.")
 
     // The IID must match MCP_PLUGIN_IID (moc does not expand macros here).
-    Q_PLUGIN_METADATA(IID "ai.mcp.qt.mcp-plugin/2.0" FILE "example_plugin.json")
-    Q_INTERFACES(mcp::PluginInterface)
+    Q_PLUGIN_METADATA (IID "ai.mcp.qt.mcp-plugin/2.0" FILE
+                           "example_plugin.json")
+    Q_INTERFACES (mcp::PluginInterface)
 
-public:
-    explicit ExamplePlugin(QObject* parent = nullptr)
-        : mcp::PluginInterface(parent) {}
-
-    void initialize(const mcp::HostInterface& host) override {
-        m_host = host;
-        registerPublicSlots();
+  public:
+    explicit ExamplePlugin (QObject *parent = nullptr)
+        : mcp::PluginInterface (parent)
+    {
     }
 
-    void shutdown(void) override {}
+    void initialize (const mcp::HostInterface &host) override
+    {
+      m_host = host;
+      registerPublicSlots ();
+    }
 
-public slots:
+    void shutdown (void) override {}
+
+  public slots:
     // Tool: "QString ExamplePlugin::hello(QString)".
-    QString hello(QString name) {
-        if (name.isEmpty()) {
-            name = QStringLiteral("world");
-        }
-        return QStringLiteral("Hello, %1!").arg(name);
+    QString hello (QString name)
+    {
+      if (name.isEmpty ())
+      {
+        name = QStringLiteral ("world");
+      }
+      return QStringLiteral ("Hello, %1!").arg (name);
     }
 
     // Tool: "double ExamplePlugin::add(double,double)".
-    double add(double a, double b) { return a + b; }
+    double add (double a, double b) { return a + b; }
 
     // Tool returning structured JSON (the host maps a JSON object to
     // structuredContent and a text dump): "QVariant ExamplePlugin::info()".
-    QVariant info(void) {
-        return QJsonObject{
-            {"plugin", "example"},
-            {"version", "0.1.0"},
-            {"ready", true},
-        };
+    QVariant info (void)
+    {
+      return QJsonObject{
+        { "plugin", "example" },
+        { "version", "0.1.0" },
+        { "ready", true },
+      };
     }
 
     // Resource reader for "example://info". A resource reader takes an
     // optional single QString (the requested URI) and returns its text.
-    QString readInfo(QString uri) {
-        (void)uri;
-        const QJsonObject doc{
-            {"plugin", "example"},
-            {"version", "0.1.0"},
-            {"notes", "Replace this example with real content."},
-        };
-        return QString::fromStdString(
-            QJsonDocument(doc).toJson(QJsonDocument::Compact).toStdString());
+    QString readInfo (QString uri)
+    {
+      (void)uri;
+      const QJsonObject doc{
+        { "plugin", "example" },
+        { "version", "0.1.0" },
+        { "notes", "Replace this example with real content." },
+      };
+      return QString::fromStdString (
+          QJsonDocument (doc).toJson (QJsonDocument::Compact).toStdString ());
     }
-};
+  };
 
-}  // namespace
+} // namespace
 
 #include "example_plugin.moc"
