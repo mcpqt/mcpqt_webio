@@ -32,6 +32,7 @@ namespace
     Q_CLASSINFO("id", "example")
     Q_CLASSINFO("version", "0.1.0")
     Q_CLASSINFO("description", "Example plugin — replace with your own.")
+    Q_CLASSINFO("license", "AGPL-3.0-only")
 
     // The IID must match MCP_PLUGIN_IID (moc does not expand macros here).
     Q_PLUGIN_METADATA(IID MCP_PLUGIN_IID FILE "example_plugin.json")
