@@ -20,8 +20,6 @@
 #include <QString>
 #include <QVariant>
 
-#include <string>
-
 namespace
 {
 
@@ -31,46 +29,45 @@ namespace
 
     // Metadata read by the host. "id" is required and should be unique among
     // loaded plugins; "version"/"description" are optional.
-    Q_CLASSINFO ("id", "example")
-    Q_CLASSINFO ("version", "0.1.0")
-    Q_CLASSINFO ("description", "Example plugin — replace with your own.")
+    Q_CLASSINFO("id", "example")
+    Q_CLASSINFO("version", "0.1.0")
+    Q_CLASSINFO("description", "Example plugin — replace with your own.")
 
     // The IID must match MCP_PLUGIN_IID (moc does not expand macros here).
-    Q_PLUGIN_METADATA (IID "ai.mcp.qt.mcp-plugin/2.0" FILE
-                           "example_plugin.json")
-    Q_INTERFACES (mcp::PluginInterface)
+    Q_PLUGIN_METADATA(IID MCP_PLUGIN_IID FILE "example_plugin.json")
+    Q_INTERFACES(mcp::PluginInterface)
 
   public:
-    explicit ExamplePlugin (QObject *parent = nullptr)
-        : mcp::PluginInterface (parent)
+    explicit ExamplePlugin(QObject* parent = nullptr)
+        : mcp::PluginInterface(parent)
     {
     }
 
-    void initialize (const mcp::HostInterface &host) override
+    void initialize(const mcp::HostInterface& host) override
     {
       m_host = host;
-      registerPublicSlots ();
+      registerPublicSlots();
     }
 
-    void shutdown (void) override {}
+    void shutdown(void) override {}
 
   public slots:
     // Tool: "QString ExamplePlugin::hello(QString)".
-    QString hello (QString name)
+    QString hello(QString name)
     {
-      if (name.isEmpty ())
+      if(name.isEmpty())
       {
-        name = QStringLiteral ("world");
+        name = QStringLiteral("world");
       }
-      return QStringLiteral ("Hello, %1!").arg (name);
+      return QStringLiteral("Hello, %1!").arg(name);
     }
 
     // Tool: "double ExamplePlugin::add(double,double)".
-    double add (double a, double b) { return a + b; }
+    double add(double a, double b) { return a + b; }
 
     // Tool returning structured JSON (the host maps a JSON object to
     // structuredContent and a text dump): "QVariant ExamplePlugin::info()".
-    QVariant info (void)
+    QVariant info(void)
     {
       return QJsonObject{
         { "plugin", "example" },
@@ -81,7 +78,7 @@ namespace
 
     // Resource reader for "example://info". A resource reader takes an
     // optional single QString (the requested URI) and returns its text.
-    QString readInfo (QString uri)
+    QString readInfo(QString uri)
     {
       (void)uri;
       const QJsonObject doc{
@@ -89,8 +86,8 @@ namespace
         { "version", "0.1.0" },
         { "notes", "Replace this example with real content." },
       };
-      return QString::fromStdString (
-          QJsonDocument (doc).toJson (QJsonDocument::Compact).toStdString ());
+      return QString::fromStdString(
+          QJsonDocument(doc).toJson(QJsonDocument::Compact).toStdString());
     }
   };
 
