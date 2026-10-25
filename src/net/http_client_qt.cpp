@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-License-Identifier: Apache-2.0
 //
-// HttpClient transport backed by QNetworkAccessManager. Compiled when
-// DDG_HTTP_BACKEND == "qt".
+// HttpClient transport backed by QNetworkAccessManager.
 
 #include "http_client.hpp"
 
@@ -24,7 +22,7 @@
 #include <algorithm>
 #include <cctype>
 
-namespace ddg {
+namespace webio {
 namespace {
 
 std::string lower(std::string s) {
@@ -45,8 +43,6 @@ void configure_ssl(QNetworkRequest& req, const TlsVerify& verify) {
 }
 
 }  // namespace
-
-const char* HttpClient::backend_name() { return "qt"; }
 
 HttpResponse HttpClient::perform(const std::string&                        method,
                                  const std::string&                        url,
@@ -101,4 +97,4 @@ HttpResponse HttpClient::perform(const std::string&                        metho
     return res;
 }
 
-}  // namespace ddg
+}  // namespace webio

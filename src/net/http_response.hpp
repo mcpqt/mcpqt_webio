@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-License-Identifier: Apache-2.0
 //
 // A single outbound HTTP response.
 
@@ -8,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace ddg {
+namespace webio {
 
 struct HttpResponse {
     int                                          status = 0;
@@ -22,4 +21,4 @@ struct HttpResponse {
     }
 };
 
-}  // namespace ddg
+}  // namespace webio

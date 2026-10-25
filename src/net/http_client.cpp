@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-License-Identifier: Apache-2.0
 
 #include "http_client.hpp"
 
-#include "utils.hpp"
+#include "net_utils.hpp"
 
-namespace ddg {
+namespace webio {
 
 HttpClient::HttpClient(TlsVerify verify) : verify_(std::move(verify)) {}
 
@@ -24,4 +23,4 @@ HttpResponse HttpClient::post_form(const std::string&                       url,
     return perform("POST", url, h, url_form_encode(form), timeout_ms);
 }
 
-}  // namespace ddg
+}  // namespace webio

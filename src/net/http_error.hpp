@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-License-Identifier: Apache-2.0
 //
 // Base class for outbound HTTP failures.
 
@@ -7,10 +6,10 @@
 
 #include <stdexcept>
 
-namespace ddg {
+namespace webio {
 
 struct HttpError : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-}  // namespace ddg
+}  // namespace webio

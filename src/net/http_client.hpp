@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-License-Identifier: Apache-2.0
 //
-// Outbound HTTP client. The transport implementation is selected at configure
-// time (see DDG_HTTP_BACKEND): either QNetworkAccessManager ("qt") or the
-// system `curl` binary ("curl"). Only the matching .cpp is compiled, so this
-// header stays free of Qt/process specifics.
-//
-// Exceptions mirror the httpx types server.py catches (HttpStatusError,
-// ConnectError, TimeoutError).
+// Generic outbound HTTP client backed by QNetworkAccessManager. It performs
+// raw GET and form POST requests and returns the response without interpreting
+// the body.
 
 #pragma once
 
@@ -17,7 +12,7 @@
 #include <map>
 #include <string>
 
-namespace ddg {
+namespace webio {
 
 class HttpClient {
 public:
@@ -28,14 +23,11 @@ public:
                      const std::map<std::string, std::string>& headers    = {},
                      int                                       timeout_ms = 30000);
 
-    /// application/x-www-form-urlencoded POST (the DuckDuckGo search call).
+    /// application/x-www-form-urlencoded POST.
     HttpResponse post_form(const std::string&                       url,
                            const std::map<std::string, std::string>& form,
                            const std::map<std::string, std::string>& headers    = {},
                            int                                       timeout_ms = 30000);
-
-    /// The compiled-in backend name: "qt" or "curl".
-    static const char* backend_name();
 
 private:
     HttpResponse perform(const std::string&                       method,
@@ -47,4 +39,4 @@ private:
     TlsVerify verify_;
 };
 
-}  // namespace ddg
+}  // namespace webio
