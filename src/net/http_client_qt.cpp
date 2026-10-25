@@ -4,9 +4,7 @@
 
 #include "http_client.hpp"
 
-#include "connect_error.hpp"
-#include "http_error.hpp"
-#include "timeout_error.hpp"
+#include "errors.h"
 
 #include <QByteArray>
 #include <QEventLoop>

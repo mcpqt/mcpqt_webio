@@ -21,13 +21,10 @@ set(WEBIO_NET_SOURCES
 )
 
 set(WEBIO_NET_HEADERS
-    src/net/blocked_url_error.hpp
-    src/net/connect_error.hpp
+    src/net/errors.h
     src/net/http_client.hpp
-    src/net/http_error.hpp
     src/net/http_response.hpp
     src/net/net_utils.hpp
-    src/net/timeout_error.hpp
     src/net/tls_verify.hpp
 )
 

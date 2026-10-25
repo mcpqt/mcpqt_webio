@@ -7,7 +7,7 @@
 
 #include "plugin.h"
 
-#include "blocked_url_error.hpp"
+#include "errors.h"
 #include "http_client.hpp"
 #include "http_response.hpp"
 #include "net_utils.hpp"
