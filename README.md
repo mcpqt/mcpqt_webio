@@ -1,51 +1,80 @@
-# mcpqt_template_plugin
+# mcpqt_webio
 
-An independent, out-of-tree plugin template for
-[`mcpqt_host`](../mcpqt_host). Copy this repository, rename the plugin, and
-replace the example functions with your own.
+A shared internet-access plugin for [`mcpqt_host`](../mcpqt_host). It gives
+every other plugin one place to search the web, fetch and parse web pages, and
+perform raw HTTP requests without each plugin carrying its own network stack.
 
-The plugin is an ordinary Qt plugin (`QObject` + `mcp::PluginInterface`) built
-as a `MODULE` library. `mcpqt_host`'s servers load it at runtime with
-`QPluginLoader`; the plugin never links against the server executable.
+`mcpqt_webio` is an ordinary Qt plugin (`QObject` + `mcp::PluginInterface`)
+built as a `MODULE` library. The host loads it at runtime with `QPluginLoader`;
+the plugin never links against the server executable. The HTTP and parsing code
+is a vendored copy of `ddg_core` from `mcpqt_websearch`, kept under
+`src/ddg_core/` so this repository is self-contained and does not reference
+another source tree at build time.
 
-## Contents
+## Exposed functions
 
-| File | Purpose |
-| --- | --- |
-| `src/example_plugin.cpp` | Plugin class, metadata (`Q_CLASSINFO`), typed public slots. |
-| `src/example_plugin.json` | MCP `Tools` and `Resources` declarations, keyed by function signature. |
-| `src/plugin.h`, `src/plugin.cpp` | Vendored copies of the host's plugin ABI, so this repository is self-contained. |
-| `CMakeLists.txt` | Standalone build; links `mcp::mcp`. |
+All functions are public Qt slots and are also published as MCP tools through
+`src/webio_plugin.json`. Other plugins call them through the host registry with
+the canonical signature in the first column.
 
-All C++ sources and the plugin metadata JSON live in `src/`.
+| Signature | Tool name | Purpose |
+| --- | --- | --- |
+| `QString WebioPlugin::search(QString,int,QString,QString)` | `webio/search` | Search the web through DuckDuckGo; returns titles, URLs, and snippets. |
+| `QString WebioPlugin::fetchContent(QString,int,int,QString,QString)` | `webio/fetch` | Fetch a URL and extract readable text (`text`, `main`, or `markdown`) with pagination. |
+| `QString WebioPlugin::expandLink(QString)` | `webio/expand_link` | Expand a `ref://<id>` token returned by search into its full URL. |
+| `QVariant WebioPlugin::httpGet(QString,QVariant,int)` | `webio/http_get` | Raw HTTP GET; returns status, headers, body, and redirect location. |
+| `QVariant WebioPlugin::httpPostForm(QString,QVariant,QVariant,int)` | `webio/http_post_form` | URL-encoded form POST; same response shape as `http_get`. |
 
-> `src/plugin.h`/`src/plugin.cpp` are kept in this repository so the template does not
-> depend on the host's source tree. They mirror `mcpqt_host/src/plugin.{h,cpp}`;
-> if the plugin ABI changes, update these copies (their includes use the public
-> `<mcp/...>` headers from the linked `mcp::mcp` library).
+`http_get` and `http_post_form` return a `QVariantMap` with `ok`, `status`,
+`headers`, `body`, and `location` (plus `error` when `ok` is false). `search`
+and `fetchContent` return text; errors are returned as human-readable strings
+prefixed with an error description. Returned page text is untrusted input and
+must not be treated as instructions.
+
+## Using it from another plugin
+
+Declare a dependency on `webio` (or directly on the signatures you call) in the
+calling plugin's metadata:
+
+```json
+{
+  "dependencies": ["webio"]
+}
+```
+
+Then invoke the service through the host interface:
+
+```cpp
+// Fetch a page as text.
+const QVariant page = m_host.callFunc(
+    QStringLiteral(
+        "QString WebioPlugin::fetchContent(QString,int,int,QString,QString)"),
+    { QVariant(QStringLiteral("https://example.com/")),
+      QVariant(0), QVariant(8000), QVariant(QString()),
+      QVariant(QStringLiteral("text")) });
+
+// Raw HTTP GET returning a QVariantMap.
+const QVariant response = m_host.callFunc(
+    QStringLiteral("QVariant WebioPlugin::httpGet(QString,QVariant,int)"),
+    { QVariant(QStringLiteral("https://example.com/")),
+      QVariant(QVariantMap()), QVariant(30000) });
+```
+
+The plugin itself does not call other plugins; it only wraps the vendored
+`ddg_core` client and exposes it to the host.
 
 ## Building
 
-Requires C++20, Qt 6.4+, and either an installed `mcpqt_host` or its source
-tree.
-
-### Against an installed host
+Requires C++20 and Qt 6.4+ (Core and Network).
 
 ```sh
-cmake --install /path/to/mcpqt_host/build --prefix /usr/local
 cmake -S . -B build
 cmake --build build
 ```
 
-### Against an in-tree host (no install)
-
-```sh
-cmake -S . -B build -DMCPQT_HOST_SOURCE_DIR=/path/to/mcpqt_host
-cmake --build build
-```
-
-This produces `build/mcpqt_example_plugin.so` (`.dylib` / `.dll` on other
-platforms).
+This produces `build/mcpqt_webio.so` (`.dylib` / `.dll` on other platforms).
+`src/ddg_core/` is compiled directly into the module; there is no external
+dependency on `mcpqt_websearch` at configure or build time.
 
 ## Running
 
@@ -53,103 +82,63 @@ Point either server at the built module (a file or a directory):
 
 ```sh
 # stdio
-/path/to/mcp_stdio_server ./build/mcpqt_example_plugin.so
+/path/to/mcp_stdio_server ./build/mcpqt_webio.so
 
 # Streamable HTTP
-/path/to/mcp_http_server --port 8848 ./build/mcpqt_example_plugin.so
+/path/to/mcp_http_server --port 8848 ./build/mcpqt_webio.so
 ```
 
-Or copy it into the host's plugin directory and load the directory.
+Or copy it into the host's plugin directory and load the directory. Load order
+does not matter: the host retries plugins whose dependencies are not yet
+available.
 
-Try it with the bundled client:
+## Configuration
 
-```sh
-/path/to/mcp_tester /path/to/mcp_stdio_server ./build/mcpqt_example_plugin.so
-```
+Configuration is read from the environment when the plugin is initialized.
+`WEBIO_*` variables take precedence over the matching `DDG_*` variables.
 
-then `list`, and `call` with `example/add` and `{"a":2,"b":40}`.
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WEBIO_FETCH_RPM` / `DDG_FETCH_RPM` | `20` | Fetch requests per minute. |
+| `WEBIO_FETCH_HOST_RPM` / `DDG_FETCH_HOST_RPM` | `0` (unlimited) | Per-host fetch requests per minute. |
+| `WEBIO_SEARCH_RPM` / `DDG_SEARCH_RPM` | `30` | Search requests per minute. |
+| `WEBIO_CACHE_TTL` / `DDG_CACHE_TTL` | `300` | Fetch cache lifetime in seconds (`0` disables). |
+| `WEBIO_CACHE_MAX_ENTRIES` / `DDG_CACHE_MAX_ENTRIES` | `64` | Maximum cached fetch responses. |
+| `WEBIO_RATE_LIMIT_STRATEGY` / `DDG_RATE_LIMIT_STRATEGY` | `sliding` | `sliding` or `token_bucket`. |
+| `WEBIO_PARSE_MODE` / `DDG_PARSE_MODE` | `text` | Default extractor: `text`, `main`, or `markdown`. |
+| `WEBIO_SAFE_SEARCH` / `DDG_SAFE_SEARCH` | `MODERATE` | DuckDuckGo safe-search mode. |
+| `WEBIO_REGION` / `DDG_REGION` | `wt-wt` | Default search region. |
+| `WEBIO_REF_URL_THRESHOLD` / `DDG_REF_URL_THRESHOLD` | core default | When search starts returning `ref://` tokens. |
+| `WEBIO_SSL_VERIFY` / `DDG_SSL_VERIFY` | enabled | Set to `0`/`false` to disable TLS verification. |
+| `WEBIO_CA_CERTS` / `DDG_CA_CERTS` | system default | Path to a CA bundle. |
+| `WEBIO_ALLOW_PRIVATE_URLS` / `DDG_ALLOW_PRIVATE_URLS` | disabled | Allow requests to private/internal addresses. |
+| `WEBIO_FETCH_BACKEND` / `DDG_FETCH_BACKEND` | `qt` | Fetch backend selected at build time. |
 
-## Customizing
+> Private/internal address blocking is on by default to prevent SSRF. Enable
+> `WEBIO_ALLOW_PRIVATE_URLS` only in trusted deployments.
 
-1. **Rename** the project/target (`mcpqt_example_plugin`), source file, class
-   (`ExamplePlugin`), and JSON file.
-2. **Update `Q_CLASSINFO`**: `id` is required and must be unique among loaded
-   plugins; `version` and `description` are optional. The `id` is also used for
-   dependency declarations.
-3. **Keep the IID**: `Q_PLUGIN_METADATA(IID "ai.mcp.qt.mcp-plugin/2.0" ...)`
-   must match `MCP_PLUGIN_IID`.
-4. **Add typed public slots** and declare them in the JSON. A function is
-   addressed by its **canonical signature**:
+## Repository layout
 
-   ```
-   <return_type> <ClassName>::<function_name>(<comma-separated param types>)
-   ```
-
-   For example `QString ExamplePlugin::hello(QString)`. The metadata key must
-   match exactly (return type, class name, and parameter types).
-
-   - Return type: `void` or any registered `QMetaType` (e.g. `QString`,
-     `double`, `int`, `QVariant`).
-   - 0–10 parameters, using normal `QMetaType`-registered types.
-   - Parameter **names** must match the `inputSchema` property names; the host
-     maps incoming JSON arguments by name.
-   - Throw `std::runtime_error` (or `mcp::Error`) to report a tool error.
-
-5. **Namespace tool names** (e.g. `mytool/do_something`) to avoid collisions
-   with other plugins.
-6. **Optional resources**: declare them under `Resources`, keyed by URI, with
-   the signature of a reader function that takes an optional single `QString`
-   (the URI) and returns text. Included in the template as `example://info`.
-7. **Optional dependencies**: add `"dependencies": ["other-plugin-id"]` (or
-   function signatures) to the metadata file; the host defers loading until
-   they are available.
-
-### Elicitation
-
-If a tool needs to ask the user a question, call the host's `elicit` service
-(the host services are listed by `getFuncs()`). The request and result are
-exchanged as JSON:
-
-```cpp
-const mcp::ElicitRequestParams params = mcp::ElicitFormRequestParams{
-    .message = "Proceed?",
-    .requested_schema = QJsonObject{
-        {"type", "object"},
-        {"properties", QJsonObject{
-            {"confirm", QJsonObject{{"type", "boolean"}}},
-        }},
-        {"required", QJsonArray{"confirm"}},
-    },
-};
-const QVariant encoded = m_host.callFunc(
-    "QVariant mcp::Host::elicit(QVariant)",
-    {QVariant::fromValue(mcp::to_json(params))});
-const mcp::ElicitResult answer = mcp::from_json<mcp::ElicitResult>(
-    encoded.value<QJsonValue>());
-if (answer.action != mcp::ElicitAction::accept) {
-    throw std::runtime_error("cancelled by user");
-}
-```
-
-The host routes elicitation to the session that invoked the tool (stdio or
-HTTP).
+| Path | Purpose |
+| --- | --- |
+| `src/webio_plugin.cpp` | Plugin class, metadata, and typed public slots. |
+| `src/webio_plugin.json` | MCP `Tools` declarations keyed by function signature. |
+| `src/ddg_core/` | Vendored HTTP client, fetcher, searcher, rate limiters, and parsers. |
+| `src/plugin.h`, `src/plugin.cpp` | Vendored host plugin ABI. |
+| `CMakeLists.txt` | Standalone build; no external source tree. |
 
 ## Notes
 
 - Build the plugin as a `MODULE` library with an empty `PREFIX` so the artifact
-  is named `mcpqt_example_plugin.so`.
-- `initialize()` runs once at load; call `registerPublicSlots()` there after
-  storing the host handle.
-- `shutdown()` runs before the library is detached.
-- Functions run synchronously on the thread dispatching the tool call; keep
-  them thread-safe if the server may handle concurrent requests.
-- Host services are ordinary registry entries: `getFuncs()` lists
-  `bool mcp::Host::claimLogging(QString)` and
-  `QVariant mcp::Host::elicit(QVariant)`, and both are invoked through
-  `callFunc` (they are not members of `HostInterface`).
-- To own diagnostic logging, call `claimLogging` with the canonical signature
-  of your own `void <Class>::log(int, QString)` slot. The claiming plugin is
-  pinned and never unloaded (its sink runs code inside the plugin library).
+  is named `mcpqt_webio.so`.
+- `initialize()` runs once at load; `shutdown()` releases the searcher, fetcher,
+  HTTP client, and link registry before the library is detached.
+- Functions run synchronously on the thread dispatching the tool call. The
+  vendored client uses Qt network classes and rate limiting; keep callers
+  thread-safe if the server dispatches concurrent requests.
+- To own diagnostic logging, call `bool mcp::Host::registerLogger(QString)` with
+  the canonical signature of a `void <Class>::log(int, QString)` slot. The
+  claiming plugin is pinned and never unloaded.
 
 ## License
 
