@@ -1,8 +1,8 @@
 ﻿// SPDX-License-Identifier: AGPL-3.0-only
 
-#include "http_client.hpp"
+#include "http_client.h"
 
-#include "net_utils.hpp"
+#include "net_utils.h"
 #include "errors.h"
 
 #include <QMetaObject>

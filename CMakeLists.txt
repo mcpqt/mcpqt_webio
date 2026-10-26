@@ -21,17 +21,16 @@ set(WEBIO_NET_SOURCES
 
 set(WEBIO_NET_HEADERS
     src/net/errors.h
-    src/net/http_client.hpp
-    src/net/http_response.hpp
-    src/net/net_utils.hpp
-    src/net/tls_verify.hpp
+    src/net/http_client.h
+    src/net/http_response.h
+    src/net/net_utils.h
+    src/net/tls_verify.h
 )
 
 # Transport layer as an object library so the plugin and tests can share it.
 add_library(webio_net OBJECT ${WEBIO_NET_SOURCES} ${WEBIO_NET_HEADERS})
 target_include_directories(webio_net PUBLIC
     src
-    src/net
 )
 target_link_libraries(webio_net PUBLIC
     Qt6::Core
@@ -49,7 +48,6 @@ set_target_properties(mcpqt_webio PROPERTIES PREFIX "")
 
 target_include_directories(mcpqt_webio PRIVATE
     src
-    src/net
 )
 
 target_link_libraries(mcpqt_webio PRIVATE

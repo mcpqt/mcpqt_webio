@@ -7,11 +7,11 @@
 
 #include "plugin.h"
 
-#include "errors.h"
-#include "http_client.hpp"
-#include "http_response.hpp"
-#include "net_utils.hpp"
-#include "tls_verify.hpp"
+#include "net/errors.h"
+#include "net/http_client.h"
+#include "net/http_response.h"
+#include "net/net_utils.h"
+#include "net/tls_verify.h"
 
 #include <QFuture>
 #include <QObject>

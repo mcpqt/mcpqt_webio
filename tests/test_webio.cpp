@@ -4,9 +4,9 @@
 
 #include <QtTest>
 
-#include "http_client.hpp"
-#include "net_utils.hpp"
-#include "tls_verify.hpp"
+#include "http_client.h"
+#include "net_utils.h"
+#include "tls_verify.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>

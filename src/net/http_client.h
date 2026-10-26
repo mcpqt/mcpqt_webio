@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "http_response.hpp"
-#include "tls_verify.hpp"
+#include "http_response.h"
+#include "tls_verify.h"
 
 #include <QFuture>
 #include <QMap>

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-#include "net_utils.hpp"
+#include "net_utils.h"
 
 #include "errors.h"
 
