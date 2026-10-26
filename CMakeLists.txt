@@ -27,13 +27,23 @@ set(WEBIO_NET_HEADERS
     src/net/tls_verify.hpp
 )
 
+# Transport layer as an object library so the plugin and tests can share it.
+add_library(webio_net OBJECT ${WEBIO_NET_SOURCES} ${WEBIO_NET_HEADERS})
+target_include_directories(webio_net PUBLIC
+    src
+    src/net
+)
+target_link_libraries(webio_net PUBLIC
+    Qt6::Core
+    Qt6::Network
+)
+
 add_library(mcpqt_webio MODULE
     src/webio_plugin.cpp
     src/webio_plugin.json
     src/plugin.cpp
     src/plugin.h
-    ${WEBIO_NET_SOURCES}
-    ${WEBIO_NET_HEADERS}
+    $<TARGET_OBJECTS:webio_net>
 )
 set_target_properties(mcpqt_webio PROPERTIES PREFIX "")
 
@@ -52,3 +62,10 @@ target_compile_options(mcpqt_webio PRIVATE
         -Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive->
 )
+
+# ----- tests ----------------------------------------------------------------
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_subdirectory(tests)
+endif()

@@ -12,19 +12,18 @@ under `src/net/` and is website-agnostic.
 
 ## Exposed functions
 
-The synchronous functions are public Qt slots and are also published as MCP
-tools through `src/webio_plugin.json`. The asynchronous functions are public Qt
-slots for plugin-to-plugin use and are not published as MCP tools.
+Both functions are public Qt slots and are also published as MCP tools through
+`src/webio_plugin.json`. They return a `QFuture<QVariant>` immediately; the
+request completes asynchronously.
 
 | Signature | Tool name | Purpose |
 | --- | --- | --- |
-| `QVariant WebioPlugin::httpGet(QString,QVariant,int)` | `webio/http_get` | Raw HTTP GET; returns status, headers, body, and redirect location. |
-| `QVariant WebioPlugin::httpPostForm(QString,QVariant,QVariant,int)` | `webio/http_post_form` | URL-encoded form POST; same response shape as `http_get`. |
-| `QFuture<QVariant> WebioPlugin::httpGetAsync(QString,QVariant,int)` | — | Asynchronous GET; returns a `QFuture` that resolves to the same response shape. |
-| `QFuture<QVariant> WebioPlugin::httpPostFormAsync(QString,QVariant,QVariant,int)` | — | Asynchronous form POST; returns a `QFuture` that resolves to the same response shape. |
+| `QFuture<QVariant> WebioPlugin::httpGet(QString,QVariant,uint32_t)` | `webio/http_get` | Asynchronous raw HTTP GET; resolves to status, headers, body, and redirect location. |
+| `QFuture<QVariant> WebioPlugin::httpPost(QString,QVariant,QVariant,uint32_t)` | `webio/http_post_form` | Asynchronous URL-encoded form POST; same response shape as `http_get`. |
 
-All four return a `QVariantMap` with `ok`, `status`, `headers`, `body`, and
-`location` (plus `error` when `ok` is false). The response body is not parsed.
+The resolved `QVariant` is a `QVariantMap` with `ok`, `status`, `headers`,
+`body`, and `location` (plus `error` when `ok` is false). The response body is
+not parsed.
 
 ## Using it from another plugin
 
@@ -37,50 +36,43 @@ calling plugin's metadata:
 }
 ```
 
-Then invoke the service through the host interface:
+Then invoke the service through the host interface. Both functions return a
+`QFuture<QVariant>` immediately, so the caller can keep working until it needs
+the response:
 
 ```cpp
 // Generic GET.
-const QVariant get_response = m_host.callFunc(
-    QStringLiteral("QVariant WebioPlugin::httpGet(QString,QVariant,int)"),
+const QVariant get_handle = m_host.callFunc(
+    QStringLiteral(
+        "QFuture<QVariant> WebioPlugin::httpGet(QString,QVariant,uint32_t)"),
     { QVariant(QStringLiteral("https://example.com/")),
       QVariant(QVariantMap()), QVariant(30000) });
 
+const QFuture<QVariant> get_future = get_handle.value<QFuture<QVariant>>();
+// ... do other work ...
+get_future.waitForFinished();
+const QVariantMap get_response = get_future.result().toMap();
+
 // Generic form POST.
-const QVariant post_response = m_host.callFunc(
+const QVariant post_handle = m_host.callFunc(
     QStringLiteral(
-        "QVariant WebioPlugin::httpPostForm(QString,QVariant,QVariant,int)"),
+        "QFuture<QVariant> WebioPlugin::httpPost(QString,QVariant,QVariant,uint32_t)"),
     { QVariant(QStringLiteral("https://example.com/api")),
       QVariant(QVariantMap{{QStringLiteral("q"), QStringLiteral("term")}}),
       QVariant(QVariantMap()), QVariant(30000) });
+
+const QFuture<QVariant> post_future = post_handle.value<QFuture<QVariant>>();
+post_future.waitForFinished();
+const QVariantMap post_response = post_future.result().toMap();
 ```
+
+`QFuture` is a registered Qt metatype, so the handle can be carried through the
+host's `QVariant`-based registry. Callers must wait on the future (or attach a
+continuation) to obtain the result.
 
 A higher-level plugin (for example a search plugin) should use these raw calls
 to reach its upstream service and handle any parsing or result formatting
 itself.
-
-### Asynchronous plugin-to-plugin calls
-
-The `*Async` functions return a `QFuture<QVariant>` immediately. The request is
-started on the HTTP client's dedicated network thread, so the calling plugin can
-keep working until it needs the response:
-
-```cpp
-const QVariant handle = m_host.callFunc(
-    QStringLiteral(
-        "QFuture<QVariant> WebioPlugin::httpGetAsync(QString,QVariant,int)"),
-    { QVariant(QStringLiteral("https://example.com/")),
-      QVariant(QVariantMap()), QVariant(30000) });
-
-const QFuture<QVariant> future = handle.value<QFuture<QVariant>>();
-// ... do other work ...
-future.waitForFinished();
-const QVariantMap response = future.result().toMap();
-```
-
-`QFuture` is a registered Qt metatype, so the handle can be carried through the
-host's `QVariant`-based registry. Callers that use the synchronous functions
-above do not need to wait manually.
 
 ## Building
 
@@ -118,10 +110,6 @@ Configuration is read from the environment when the plugin is initialized.
 | --- | --- | --- |
 | `WEBIO_SSL_VERIFY` | enabled | Set to `0`/`false` to disable TLS verification. |
 | `WEBIO_CA_CERTS` | system default | Path to a CA bundle. |
-| `WEBIO_ALLOW_PRIVATE_URLS` | disabled | Allow requests to private/internal addresses. |
-
-> Private/internal address blocking is on by default to prevent SSRF. Enable
-> `WEBIO_ALLOW_PRIVATE_URLS` only in trusted deployments.
 
 ## Repository layout
 
@@ -129,7 +117,7 @@ Configuration is read from the environment when the plugin is initialized.
 | --- | --- |
 | `src/webio_plugin.cpp` | Plugin class, metadata, and typed public slots. |
 | `src/webio_plugin.json` | MCP `Tools` declarations keyed by function signature. |
-| `src/net/` | Generic HTTP client, response type, TLS settings, and URL/SSRF helpers. |
+| `src/net/` | Generic HTTP client, response type, TLS settings, and string helpers. |
 | `src/plugin.h`, `src/plugin.cpp` | Vendored host plugin ABI. |
 | `CMakeLists.txt` | Standalone build. |
 
@@ -139,11 +127,9 @@ Configuration is read from the environment when the plugin is initialized.
   is named `mcpqt_webio.so`.
 - `initialize()` runs once at load; `shutdown()` releases the HTTP client before
   the library is detached.
-- The synchronous tool functions block the dispatching thread until the HTTP
-  request completes. The asynchronous functions return a `QFuture` immediately
-  and run the request on the HTTP client's dedicated network thread. The
-  network thread is stopped and any outstanding requests are failed during
-  `shutdown()`.
+- The tool functions return a `QFuture<QVariant>` immediately and complete
+  asynchronously on the Qt event loop. The HTTP client is stopped and any
+  outstanding requests are failed during `shutdown()`.
 - Redirects are not followed automatically; inspect `status` and `location` in
   the response.
 

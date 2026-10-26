@@ -27,19 +27,6 @@
 
 
 
-static std::string trim(std::string s) {
-  const auto not_space = [](unsigned char c) { return !std::isspace(c); };
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), not_space));
-  s.erase(std::find_if(s.rbegin(), s.rend(), not_space).base(), s.end());
-  return s;
-}
-
-static std::string to_lower(std::string s) {
-  std::transform(s.begin(), s.end(), s.begin(),
-                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-  return s;
-}
-
 static std::optional<std::string> env_str(const char* name)
 {
   const std::string webio_key = std::string("WEBIO_") + name;
@@ -98,7 +85,7 @@ public:
     webio::TlsVerify tls;
     if(const auto v = env_str("SSL_VERIFY"))
     {
-      const std::string s = to_lower(trim(*v));
+      const std::string s = webio::to_lower(webio::trim(*v));
       tls.enabled = !(s == "0" || s == "false" || s == "no" || s == "off");
     }
     if(const auto v = env_str("CA_CERTS"))
@@ -122,71 +109,24 @@ public slots:
   // Asynchronous plugin-to-plugin API. These return immediately with a
   // QFuture<QVariant> that resolves to the same response object as the
   // synchronous tools below. Callers can attach continuations or wait.
-  QFuture<QVariant> httpGetAsync(QString url, QVariant headers,
-                                 int timeout_ms)
+  QFuture<QVariant> httpGet(QString url, QVariant headers, uint32_t timeout_ms = 30000)
   {
-    return submitRequest(false, url, headers, QVariant(), timeout_ms);
+    const uint32_t effective_timeout = !timeout_ms ? 30000 : timeout_ms;
+    return complete(m_http->get(url, to_string_map(headers),
+                                effective_timeout));
   }
 
-  QFuture<QVariant> httpPostFormAsync(QString url, QVariant form,
-                                      QVariant headers, int timeout_ms)
+  QFuture<QVariant> httpPost(QString url, QVariant form, QVariant headers, uint32_t timeout_ms = 30000)
   {
-    return submitRequest(true, url, headers, form, timeout_ms);
+    const uint32_t effective_timeout = !timeout_ms ? 30000 : timeout_ms;
+    return complete(m_http->post_form(url, to_string_map(form),
+                                      to_string_map(headers), effective_timeout));
   }
 
-  // Synchronous wrappers kept for MCP clients (and existing callers).
-  QVariant httpGet(QString url, QVariant headers, int timeout_ms)
-  {
-    QFuture<QVariant> future = httpGetAsync(url, headers, timeout_ms);
-    future.waitForFinished();
-    try
-    {
-      return future.result();
-    }
-    catch(const std::exception& e)
-    {
-      return error_result(QString::fromUtf8(e.what()));
-    }
-    catch(...)
-    {
-      return error_result(QStringLiteral("unknown error"));
-    }
-  }
-
-  QVariant httpPostForm(QString url, QVariant form, QVariant headers,
-                        int timeout_ms)
-  {
-    QFuture<QVariant> future
-        = httpPostFormAsync(url, form, headers, timeout_ms);
-    future.waitForFinished();
-    try
-    {
-      return future.result();
-    }
-    catch(const std::exception& e)
-    {
-      return error_result(QString::fromUtf8(e.what()));
-    }
-    catch(...)
-    {
-      return error_result(QStringLiteral("unknown error"));
-    }
-  }
 
 private:
-  // Synchronous: validate the target here, then hand the actual network
-  // request to HttpClient, which runs it asynchronously on its own thread.
-  QFuture<QVariant> submitRequest(bool post, const QString& url,
-                                  const QVariant& headers,
-                                  const QVariant& form, int timeout_ms)
-  {
-    const int effective_timeout = timeout_ms <= 0 ? 30000 : timeout_ms;
-    QFuture<QVariant> future
-        = post ? m_http->post_form(url, to_string_map(form),
-                                   to_string_map(headers), effective_timeout)
-               : m_http->get(url, to_string_map(headers),
-                             effective_timeout);
-
+  QFuture<QVariant> complete(QFuture<QVariant> future)
+  {    
     return future.then(
         [](QFuture<QVariant> finished) -> QVariant
         {
@@ -199,7 +139,6 @@ private:
           result.insert(QStringLiteral("ok"), true);
           return result;
         });
-
   }
 
   std::unique_ptr<webio::HttpClient> m_http;

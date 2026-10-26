@@ -31,7 +31,7 @@ namespace webio
 
   static QNetworkRequest make_request(const QString&                url,
                                       const QMap<QString, QString>& headers,
-                                      int                           timeout_ms,
+                                      uint32_t                      timeout_ms,
                                       const TlsVerify& verify)
   {
     QNetworkRequest req (url);
@@ -91,7 +91,7 @@ namespace webio
 
   QFuture<QVariant> HttpClient::get(const QString&                url,
                                     const QMap<QString, QString>& headers,
-                                    int                           timeout_ms)
+                                    uint32_t                      timeout_ms)
   {
     return make_promise(m_netman.get(make_request(url, headers, timeout_ms, m_verify)));
   }
@@ -112,7 +112,7 @@ namespace webio
   QFuture<QVariant> HttpClient::post_form(const QString&                url,
                                           const QMap<QString, QString>& form,
                                           const QMap<QString, QString>& headers,
-                                          int                           timeout_ms)
+                                          uint32_t                      timeout_ms)
   {
     QNetworkRequest req = make_request(url, headers, timeout_ms, m_verify);
     req.setHeader(QNetworkRequest::ContentTypeHeader,

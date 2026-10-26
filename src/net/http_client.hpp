@@ -20,6 +20,7 @@
 #include <QVariant>
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 
 namespace webio
@@ -34,13 +35,13 @@ namespace webio
     /// GET without following redirects.
     QFuture<QVariant> get(const QString&                url,
                           const QMap<QString, QString>& headers    = {},
-                          int                           timeout_ms = 30000);
+                          uint32_t                      timeout_ms = 30000);
 
     /// application/x-www-form-urlencoded POST.
     QFuture<QVariant> post_form(const QString&                url,
                                 const QMap<QString, QString>& form,
                                 const QMap<QString, QString>& headers    = {},
-                                int                           timeout_ms = 30000);
+                                uint32_t                      timeout_ms = 30000);
 
   private slots:
     void finish(QNetworkReply* reply);

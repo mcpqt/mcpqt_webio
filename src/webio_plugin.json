@@ -1,9 +1,9 @@
 {
     "Tools": {
-        "QVariant WebioPlugin::httpGet(QString,QVariant,int)": {
+        "QFuture<QVariant> WebioPlugin::httpGet(QString,QVariant,uint32_t)": {
             "name": "webio/http_get",
             "title": "HTTP GET",
-            "description": "Perform a raw HTTP GET request and return the status code, response headers, body, and redirect location. The response body is returned verbatim and is not parsed.",
+            "description": "Perform a raw HTTP GET request. The result resolves to the status code, response headers, body, and redirect location. The response body is returned verbatim and is not parsed.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -29,10 +29,10 @@
                 "required": ["url"]
             }
         },
-        "QVariant WebioPlugin::httpPostForm(QString,QVariant,QVariant,int)": {
+        "QFuture<QVariant> WebioPlugin::httpPost(QString,QVariant,QVariant,uint32_t)": {
             "name": "webio/http_post_form",
             "title": "HTTP POST form",
-            "description": "Submit an application/x-www-form-urlencoded POST request and return the status code, response headers, body, and redirect location. The response body is returned verbatim and is not parsed.",
+            "description": "Submit an application/x-www-form-urlencoded POST request. The result resolves to the status code, response headers, body, and redirect location. The response body is returned verbatim and is not parsed.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
