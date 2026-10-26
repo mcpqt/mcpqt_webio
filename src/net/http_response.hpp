@@ -4,21 +4,21 @@
 
 #pragma once
 
-#include <string>
-#include <unordered_map>
+#include <QByteArray>
+#include <QString>
+#include <QMap>
+#include <QNetworkReply>
 
-namespace webio {
+namespace webio
+{
+  struct HttpResponse
+  {
+    QNetworkReply::NetworkError status = QNetworkReply::NetworkError::NoError;  // HTTP status code
+    QByteArray                  body;
+    QMap<QString, QString>      headers;  // lower-cased keys
+    QString                     location;  // == headers["location"]
 
-struct HttpResponse {
-    int                                          status = 0;
-    std::string                                  body;
-    std::unordered_map<std::string, std::string> headers;  // lower-cased keys
-    std::string                                  location;  // == headers["location"]
-
-    [[nodiscard]] std::string header(const std::string& name) const {
-        auto it = headers.find(name);
-        return it == headers.end() ? std::string{} : it->second;
-    }
-};
-
+    [[nodiscard]] QString header(const QString& name) const
+      { return headers.value(name); }
+  };
 }  // namespace webio

@@ -4,13 +4,19 @@
 
 #pragma once
 
+#include <QString>
+
 #include <stdexcept>
 
 namespace webio {
 
 /// Base class for outbound HTTP failures.
-struct HttpError : std::runtime_error {
-    using std::runtime_error::runtime_error;
+struct HttpError : std::runtime_error
+{
+  using std::runtime_error::runtime_error;
+  HttpError(QString message)
+      : std::runtime_error(message.toStdString())
+    { }
 };
 
 /// Transport-level connection failure.

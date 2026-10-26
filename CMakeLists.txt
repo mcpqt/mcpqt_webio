@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(mcpqt_webio VERSION 0.2.0 LANGUAGES CXX)
+project(mcpqt_webio VERSION 0.3.0 LANGUAGES CXX)
 
 # ----- C++ / Qt boilerplate ------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
@@ -16,7 +16,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network)
 # requests and returns responses verbatim.
 set(WEBIO_NET_SOURCES
     src/net/http_client.cpp
-    src/net/http_client_qt.cpp
     src/net/net_utils.cpp
 )
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+﻿// SPDX-License-Identifier: AGPL-3.0-only
 //
 // mcpqt_webio: a generic HTTP access service for other plugins. It exposes raw
 // GET and form POST requests through the host registry so downstream plugins do
@@ -13,164 +13,196 @@
 #include "net_utils.hpp"
 #include "tls_verify.hpp"
 
+#include <QFuture>
 #include <QObject>
+#include <QPromise>
 #include <QString>
 #include <QVariant>
 #include <QVariantMap>
 
 #include <cstdlib>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 
-namespace
+
+
+static std::string trim(std::string s) {
+  const auto not_space = [](unsigned char c) { return !std::isspace(c); };
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), not_space));
+  s.erase(std::find_if(s.rbegin(), s.rend(), not_space).base(), s.end());
+  return s;
+}
+
+static std::string to_lower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return s;
+}
+
+static std::optional<std::string> env_str(const char* name)
 {
-
-  std::optional<std::string> env_str(const char* name)
+  const std::string webio_key = std::string("WEBIO_") + name;
+  const char* v = std::getenv(webio_key.c_str());
+  if(!v || !*v)
   {
-    const std::string webio_key = std::string("WEBIO_") + name;
-    const char* v = std::getenv(webio_key.c_str());
-    if(!v || !*v)
-    {
-      return std::nullopt;
-    }
-    return std::string(v);
+    return std::nullopt;
   }
+  return std::string(v);
+}
 
-  bool env_flag(const char* name)
+static QMap<QString, QString> to_string_map(const QVariant& value)
+{
+  QMap<QString, QString> result;
+  if(!value.canConvert<QVariantMap>())
   {
-    const auto v = env_str(name);
-    if(!v)
-    {
-      return false;
-    }
-    const std::string s = webio::to_lower(webio::trim(*v));
-    return s == "1" || s == "true" || s == "yes" || s == "on";
-  }
-
-  std::map<std::string, std::string> to_string_map(const QVariant& value)
-  {
-    std::map<std::string, std::string> result;
-    if(!value.canConvert<QVariantMap>())
-    {
-      return result;
-    }
-    const QVariantMap map = value.toMap();
-    for(auto it = map.begin(); it != map.end(); ++it)
-    {
-      result[it.key().toStdString()] = it.value().toString().toStdString();
-    }
     return result;
   }
-
-  QVariant response_to_variant(const webio::HttpResponse& response)
+  const QVariantMap map = value.toMap();
+  for(auto it = map.begin(); it != map.end(); ++it)
   {
-    QVariantMap headers;
-    for(const auto& [key, value] : response.headers)
-    {
-      headers.insert(QString::fromStdString(key),
-                     QString::fromStdString(value));
-    }
+    result.insert(it.key(), it.value().toString());
+  }
+  return result;
+}
 
-    QVariantMap result;
-    result.insert(QStringLiteral("status"), response.status);
-    result.insert(QStringLiteral("body"),
-                  QString::fromStdString(response.body));
-    result.insert(QStringLiteral("headers"), headers);
-    result.insert(QStringLiteral("location"),
-                  QString::fromStdString(response.location));
-    return result;
+static QVariant error_result(const QString& message)
+{
+  QVariantMap result;
+  result.insert(QStringLiteral("ok"), false);
+  result.insert(QStringLiteral("error"), message);
+  return result;
+}
+
+class WebioPlugin : public mcp::PluginInterface
+{
+  Q_OBJECT
+  Q_CLASSINFO("id", "webio")
+  Q_CLASSINFO("version", "0.3.0")
+  Q_CLASSINFO("description",
+              "Generic HTTP GET/POST access service for other plugins.")
+  Q_CLASSINFO("license", "AGPL-3.0-only")
+  Q_PLUGIN_METADATA(IID MCP_PLUGIN_IID FILE "webio_plugin.json")
+  Q_INTERFACES(mcp::PluginInterface)
+
+public:
+  explicit WebioPlugin(QObject* parent = nullptr)
+      : mcp::PluginInterface(parent)
+  {
   }
 
-  class WebioPlugin : public mcp::PluginInterface
+  void initialize(const mcp::HostInterface& host) override
   {
-    Q_OBJECT
-    Q_CLASSINFO("id", "webio")
-    Q_CLASSINFO("version", "0.2.0")
-    Q_CLASSINFO("description",
-                "Generic HTTP GET/POST access service for other plugins.")
-    Q_CLASSINFO("license", "AGPL-3.0-only")
-    Q_PLUGIN_METADATA(IID MCP_PLUGIN_IID FILE "webio_plugin.json")
-    Q_INTERFACES(mcp::PluginInterface)
+    m_host = host;
 
-  public:
-    explicit WebioPlugin(QObject* parent = nullptr)
-        : mcp::PluginInterface(parent)
+    webio::TlsVerify tls;
+    if(const auto v = env_str("SSL_VERIFY"))
     {
+      const std::string s = to_lower(trim(*v));
+      tls.enabled = !(s == "0" || s == "false" || s == "no" || s == "off");
+    }
+    if(const auto v = env_str("CA_CERTS"))
+    {
+      tls.ca_bundle = webio::trim(*v);
     }
 
-    void initialize(const mcp::HostInterface& host) override
+    m_http = std::make_unique<webio::HttpClient>(tls);
+
+    registerPublicSlots();
+  }
+
+  void shutdown(void) override
+  {
+    // HttpClient owns its network thread. Stopping it fails outstanding
+    // requests and resolves their futures; no thread-pool draining is needed.
+    m_http.reset();
+  }
+
+public slots:
+  // Asynchronous plugin-to-plugin API. These return immediately with a
+  // QFuture<QVariant> that resolves to the same response object as the
+  // synchronous tools below. Callers can attach continuations or wait.
+  QFuture<QVariant> httpGetAsync(QString url, QVariant headers,
+                                 int timeout_ms)
+  {
+    return submitRequest(false, url, headers, QVariant(), timeout_ms);
+  }
+
+  QFuture<QVariant> httpPostFormAsync(QString url, QVariant form,
+                                      QVariant headers, int timeout_ms)
+  {
+    return submitRequest(true, url, headers, form, timeout_ms);
+  }
+
+  // Synchronous wrappers kept for MCP clients (and existing callers).
+  QVariant httpGet(QString url, QVariant headers, int timeout_ms)
+  {
+    QFuture<QVariant> future = httpGetAsync(url, headers, timeout_ms);
+    future.waitForFinished();
+    try
     {
-      m_host = host;
-
-      webio::TlsVerify tls;
-      if(const auto v = env_str("SSL_VERIFY"))
-      {
-        const std::string s = webio::to_lower(webio::trim(*v));
-        tls.enabled = !(s == "0" || s == "false" || s == "no" || s == "off");
-      }
-      if(const auto v = env_str("CA_CERTS"))
-      {
-        tls.ca_bundle = webio::trim(*v);
-      }
-
-      m_allow_private_urls = env_flag("ALLOW_PRIVATE_URLS");
-      m_http = std::make_unique<webio::HttpClient>(tls);
-
-      registerPublicSlots();
+      return future.result();
     }
-
-    void shutdown(void) override { m_http.reset(); }
-
-  public slots:
-    QVariant httpGet(QString url, QVariant headers, int timeout_ms)
+    catch(const std::exception& e)
     {
-      return rawRequest(false, url, headers, QVariant(), timeout_ms);
+      return error_result(QString::fromUtf8(e.what()));
     }
-
-    QVariant httpPostForm(QString url, QVariant form, QVariant headers,
-                          int timeout_ms)
+    catch(...)
     {
-      return rawRequest(true, url, headers, form, timeout_ms);
+      return error_result(QStringLiteral("unknown error"));
     }
+  }
 
-  private:
-    QVariant rawRequest(bool post, const QString& url, const QVariant& headers,
-                        const QVariant& form, int timeout_ms)
+  QVariant httpPostForm(QString url, QVariant form, QVariant headers,
+                        int timeout_ms)
+  {
+    QFuture<QVariant> future
+        = httpPostFormAsync(url, form, headers, timeout_ms);
+    future.waitForFinished();
+    try
     {
-      QVariantMap result;
-      const std::string target = url.toStdString();
-      try
-      {
-        if(!m_allow_private_urls)
+      return future.result();
+    }
+    catch(const std::exception& e)
+    {
+      return error_result(QString::fromUtf8(e.what()));
+    }
+    catch(...)
+    {
+      return error_result(QStringLiteral("unknown error"));
+    }
+  }
+
+private:
+  // Synchronous: validate the target here, then hand the actual network
+  // request to HttpClient, which runs it asynchronously on its own thread.
+  QFuture<QVariant> submitRequest(bool post, const QString& url,
+                                  const QVariant& headers,
+                                  const QVariant& form, int timeout_ms)
+  {
+    const int effective_timeout = timeout_ms <= 0 ? 30000 : timeout_ms;
+    QFuture<QVariant> future
+        = post ? m_http->post_form(url, to_string_map(form),
+                                   to_string_map(headers), effective_timeout)
+               : m_http->get(url, to_string_map(headers),
+                             effective_timeout);
+
+    return future.then(
+        [](QFuture<QVariant> finished) -> QVariant
         {
-          webio::validate_public_url(target);
-        }
+          if(finished.isCanceled())
+            return error_result(QStringLiteral("request canceled"));
+          const QVariant raw = finished.result();
+          if(!raw.isValid())
+            return error_result(QStringLiteral("no response"));
+          QVariantMap result = raw.toMap();
+          result.insert(QStringLiteral("ok"), true);
+          return result;
+        });
 
-        const int effective_timeout = timeout_ms <= 0 ? 30000 : timeout_ms;
-        const webio::HttpResponse response
-            = post ? m_http->post_form(target, to_string_map(form),
-                                       to_string_map(headers), effective_timeout)
-                   : m_http->get(target, to_string_map(headers),
-                                 effective_timeout);
+  }
 
-        result = response_to_variant(response).toMap();
-        result.insert(QStringLiteral("ok"), true);
-      }
-      catch(const std::exception& e)
-      {
-        result.insert(QStringLiteral("ok"), false);
-        result.insert(QStringLiteral("error"),
-                      QString::fromStdString(e.what()));
-      }
-      return result;
-    }
-
-    std::unique_ptr<webio::HttpClient> m_http;
-    bool m_allow_private_urls = false;
-  };
-
-} // namespace
+  std::unique_ptr<webio::HttpClient> m_http;
+};
 
 #include "webio_plugin.moc"

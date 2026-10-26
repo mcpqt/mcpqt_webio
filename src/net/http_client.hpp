@@ -9,34 +9,46 @@
 #include "http_response.hpp"
 #include "tls_verify.hpp"
 
-#include <map>
-#include <string>
+#include <QFuture>
+#include <QMap>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QObject>
+#include <QPromise>
+#include <QString>
+#include <QVariant>
 
-namespace webio {
+#include <atomic>
+#include <memory>
 
-class HttpClient {
-public:
+namespace webio
+{
+  class HttpClient : public QObject
+  {
+    Q_OBJECT
+  public:
     explicit HttpClient(TlsVerify verify);
+    ~HttpClient() override;
 
     /// GET without following redirects.
-    HttpResponse get(const std::string&                       url,
-                     const std::map<std::string, std::string>& headers    = {},
-                     int                                       timeout_ms = 30000);
+    QFuture<QVariant> get(const QString&                url,
+                          const QMap<QString, QString>& headers    = {},
+                          int                           timeout_ms = 30000);
 
     /// application/x-www-form-urlencoded POST.
-    HttpResponse post_form(const std::string&                       url,
-                           const std::map<std::string, std::string>& form,
-                           const std::map<std::string, std::string>& headers    = {},
-                           int                                       timeout_ms = 30000);
+    QFuture<QVariant> post_form(const QString&                url,
+                                const QMap<QString, QString>& form,
+                                const QMap<QString, QString>& headers    = {},
+                                int                           timeout_ms = 30000);
 
-private:
-    HttpResponse perform(const std::string&                       method,
-                         const std::string&                       url,
-                         const std::map<std::string, std::string>& headers,
-                         const std::string&                       body,
-                         int                                      timeout_ms);
+  private slots:
+    void finish(QNetworkReply* reply);
+  private:
+    QFuture<QVariant> make_promise(QNetworkReply* reply);
 
-    TlsVerify verify_;
-};
-
+    TlsVerify m_verify;
+    QNetworkAccessManager m_netman;
+    QMap<QNetworkReply*, std::shared_ptr<QPromise<QVariant>>> m_promises;
+  };
 }  // namespace webio

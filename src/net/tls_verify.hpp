@@ -4,13 +4,13 @@
 
 #pragma once
 
-#include <string>
+#include <filesystem>
 
 namespace webio {
 
 struct TlsVerify {
-    bool        enabled = true;
-    std::string ca_bundle;  // when non-empty (and enabled), trust this PEM file
+  bool        enabled = true;
+  std::filesystem::path ca_bundle;  // when non-empty (and enabled), trust this PEM file
 };
 
 }  // namespace webio
