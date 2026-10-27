@@ -20,25 +20,30 @@ namespace webio
   static void configure_ssl(QNetworkRequest& req, const TlsVerify& verify)
   {
     QSslConfiguration cfg = req.sslConfiguration();
-    if (!verify.enabled) {
+    if(!verify.enabled)
+    {
       cfg.setPeerVerifyMode(QSslSocket::VerifyNone);
-    } else if (!verify.ca_bundle.empty()) {
-      const auto certs = QSslCertificate::fromPath(QString::fromStdString(verify.ca_bundle.string()));
+    }
+    else if(!verify.ca_bundle.empty())
+    {
+      const auto certs = QSslCertificate::fromPath(
+          QString::fromStdString(verify.ca_bundle.string()));
       cfg.setCaCertificates(certs);
     }
     req.setSslConfiguration(cfg);
   }
 
-  static QNetworkRequest make_request(const QString&                url,
+  static QNetworkRequest make_request(const QString& url,
                                       const QMap<QString, QString>& headers,
-                                      uint32_t                      timeout_ms,
+                                      uint32_t timeout_ms,
                                       const TlsVerify& verify)
   {
-    QNetworkRequest req (url);
+    QNetworkRequest req(url);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::ManualRedirectPolicy);
     req.setTransferTimeout(timeout_ms);
-    for (const auto& [k, v] : headers.asKeyValueRange()) {
+    for(const auto& [k, v] : headers.asKeyValueRange())
+    {
       req.setRawHeader(k.toLatin1(), v.toLatin1());
     }
     configure_ssl(req, verify);
@@ -48,7 +53,8 @@ namespace webio
   static QVariant response_to_variant(const HttpResponse& response)
   {
     QVariantMap headers;
-    for (auto it = response.headers.cbegin(); it != response.headers.cend(); ++it)
+    for(auto it = response.headers.cbegin(); it != response.headers.cend();
+        ++it)
       headers.insert(it.key(), it.value());
 
     QVariantMap result;
@@ -60,10 +66,10 @@ namespace webio
   }
 
   HttpClient::HttpClient(TlsVerify verify)
-      : QObject(nullptr),
-        m_verify(std::move(verify))
+      : QObject(nullptr), m_verify(std::move(verify))
   {
-    connect(&m_netman, &QNetworkAccessManager::finished, this, &HttpClient::finish);
+    connect(&m_netman, &QNetworkAccessManager::finished, this,
+            &HttpClient::finish);
   }
 
   // Abort requests still in flight and fail their futures.
@@ -73,10 +79,11 @@ namespace webio
     // finish() would otherwise erase from the container we are iterating.
     auto pending = m_promises;
     m_promises.clear();
-    for (auto it = pending.begin(); it != pending.end(); ++it)
+    for(auto it = pending.begin(); it != pending.end(); ++it)
     {
       it.key()->abort();
-      it.value()->setException(std::make_exception_ptr(HttpError("HTTP client shutting down")));
+      it.value()->setException(
+          std::make_exception_ptr(HttpError("HTTP client shutting down")));
       it.value()->finish();
     }
   }
@@ -89,30 +96,31 @@ namespace webio
     return promise->future();
   }
 
-  QFuture<QVariant> HttpClient::get(const QString&                url,
+  QFuture<QVariant> HttpClient::get(const QString& url,
                                     const QMap<QString, QString>& headers,
-                                    uint32_t                      timeout_ms)
+                                    uint32_t timeout_ms)
   {
-    return make_promise(m_netman.get(make_request(url, headers, timeout_ms, m_verify)));
+    return make_promise(
+        m_netman.get(make_request(url, headers, timeout_ms, m_verify)));
   }
 
   /// application/x-www-form-urlencoded encoding of a key/value map.
   static inline QByteArray url_form_encode(const QMap<QString, QString>& form)
   {
     QByteArray out = "";
-    for (const auto& [k, v] : form.asKeyValueRange())
+    for(const auto& [k, v] : form.asKeyValueRange())
     {
-      if (!out.isEmpty())
+      if(!out.isEmpty())
         out += '&';
       out += QUrl::toPercentEncoding(k) + '=' + QUrl::toPercentEncoding(v);
     }
     return out;
   }
 
-  QFuture<QVariant> HttpClient::post_form(const QString&                url,
-                                          const QMap<QString, QString>& form,
-                                          const QMap<QString, QString>& headers,
-                                          uint32_t                      timeout_ms)
+  QFuture<QVariant>
+  HttpClient::post_form(const QString& url, const QMap<QString, QString>& form,
+                        const QMap<QString, QString>& headers,
+                        uint32_t timeout_ms)
   {
     QNetworkRequest req = make_request(url, headers, timeout_ms, m_verify);
     req.setHeader(QNetworkRequest::ContentTypeHeader,
@@ -120,7 +128,8 @@ namespace webio
     return make_promise(m_netman.post(req, url_form_encode(form)));
   }
 
-  void build_error(std::shared_ptr<QPromise<QVariant>> promise, QString message, QString default_message)
+  void build_error(std::shared_ptr<QPromise<QVariant>> promise,
+                   QString message, QString default_message)
   {
     QVariantMap result;
     result.insert(QStringLiteral("ok"), false);
@@ -133,7 +142,7 @@ namespace webio
   void HttpClient::finish(QNetworkReply* reply)
   {
     auto promise_iter = m_promises.find(reply);
-    if (promise_iter != m_promises.end())
+    if(promise_iter != m_promises.end())
     {
       const auto promise = promise_iter.value();
       m_promises.erase(promise_iter);
@@ -141,29 +150,29 @@ namespace webio
       HttpResponse res;
       res.status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute)
                        .value<QNetworkReply::NetworkError>();
-      for (const auto& [k, v] : reply->rawHeaderPairs())
+      for(const auto& [k, v] : reply->rawHeaderPairs())
         res.headers.insert(QString::fromLatin1(k).toLower(),
                            QString::fromLatin1(v));
       res.location = res.headers.value(QStringLiteral("location"));
       res.body = reply->readAll();
 
       const QNetworkReply::NetworkError err = reply->error();
-      if (err == QNetworkReply::TimeoutError ||
-          err == QNetworkReply::OperationCanceledError)
+      if(err == QNetworkReply::TimeoutError
+         || err == QNetworkReply::OperationCanceledError)
       {
-        build_error(promise, "request timed out: " + reply->errorString(), "request timed out");
+        build_error(promise, "request timed out: " + reply->errorString(),
+                    "request timed out");
       }
-      else if (
-          err == QNetworkReply::ConnectionRefusedError ||
-          err == QNetworkReply::RemoteHostClosedError ||
-          err == QNetworkReply::HostNotFoundError ||
-          err == QNetworkReply::NetworkSessionFailedError ||
-          err == QNetworkReply::TemporaryNetworkFailureError ||
-          err == QNetworkReply::UnknownNetworkError)
+      else if(err == QNetworkReply::ConnectionRefusedError
+              || err == QNetworkReply::RemoteHostClosedError
+              || err == QNetworkReply::HostNotFoundError
+              || err == QNetworkReply::NetworkSessionFailedError
+              || err == QNetworkReply::TemporaryNetworkFailureError
+              || err == QNetworkReply::UnknownNetworkError)
       {
         build_error(promise, reply->errorString(), "connection failed");
       }
-      else if (err != QNetworkReply::NoError)
+      else if(err != QNetworkReply::NoError)
       {
         build_error(promise, reply->errorString(), "network error");
       }
@@ -174,4 +183,4 @@ namespace webio
     reply->deleteLater();
   }
 
-}  // namespace webio
+} // namespace webio

@@ -9,10 +9,10 @@
 #include <QByteArray>
 #include <QMap>
 
-namespace webio {
+namespace webio
+{
 
-std::string trim(std::string s);
-std::string to_lower(std::string s);
+  std::string trim(std::string s);
+  std::string to_lower(std::string s);
 
-
-}  // namespace webio
+} // namespace webio

@@ -13,12 +13,15 @@ namespace webio
 {
   struct HttpResponse
   {
-    QNetworkReply::NetworkError status = QNetworkReply::NetworkError::NoError;  // HTTP status code
-    QByteArray                  body;
-    QMap<QString, QString>      headers;  // lower-cased keys
-    QString                     location;  // == headers["location"]
+    QNetworkReply::NetworkError status
+        = QNetworkReply::NetworkError::NoError; // HTTP status code
+    QByteArray body;
+    QMap<QString, QString> headers; // lower-cased keys
+    QString location;               // == headers["location"]
 
     [[nodiscard]] QString header(const QString& name) const
-      { return headers.value(name); }
+    {
+      return headers.value(name);
+    }
   };
-}  // namespace webio
+} // namespace webio

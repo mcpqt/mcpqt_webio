@@ -33,18 +33,19 @@ namespace webio
     ~HttpClient() override;
 
     /// GET without following redirects.
-    QFuture<QVariant> get(const QString&                url,
-                          const QMap<QString, QString>& headers    = {},
-                          uint32_t                      timeout_ms = 30000);
+    QFuture<QVariant> get(const QString& url,
+                          const QMap<QString, QString>& headers = {},
+                          uint32_t timeout_ms = 30000);
 
     /// application/x-www-form-urlencoded POST.
-    QFuture<QVariant> post_form(const QString&                url,
+    QFuture<QVariant> post_form(const QString& url,
                                 const QMap<QString, QString>& form,
-                                const QMap<QString, QString>& headers    = {},
-                                uint32_t                      timeout_ms = 30000);
+                                const QMap<QString, QString>& headers = {},
+                                uint32_t timeout_ms = 30000);
 
   private slots:
     void finish(QNetworkReply* reply);
+
   private:
     QFuture<QVariant> make_promise(QNetworkReply* reply);
 
@@ -52,4 +53,4 @@ namespace webio
     QNetworkAccessManager m_netman;
     QMap<QNetworkReply*, std::shared_ptr<QPromise<QVariant>>> m_promises;
   };
-}  // namespace webio
+} // namespace webio
