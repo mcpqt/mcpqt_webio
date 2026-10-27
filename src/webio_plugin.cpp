@@ -10,7 +10,6 @@
 #include "net/errors.h"
 #include "net/http_client.h"
 #include "net/http_response.h"
-#include "net/net_utils.h"
 #include "net/tls_verify.h"
 
 #include <QFuture>
@@ -27,17 +26,6 @@
 #include <string>
 
 
-
-static std::optional<std::string> env_str(const char* name)
-{
-  const std::string webio_key = std::string("WEBIO_") + name;
-  const char* v = std::getenv(webio_key.c_str());
-  if(!v || !*v)
-  {
-    return std::nullopt;
-  }
-  return std::string(v);
-}
 
 static QMap<QString, QString> to_string_map(const QVariant& value)
 {
@@ -90,14 +78,14 @@ public:
     m_host = host;
 
     webio::TlsVerify tls;
-    if(const auto v = env_str("SSL_VERIFY"))
+    if(QString v = qEnvironmentVariable("WEBIO_SSL_VERIFY"); !v.isNull())
     {
-      const std::string s = webio::to_lower(webio::trim(*v));
-      tls.enabled = !(s == "0" || s == "false" || s == "no" || s == "off");
+      v = v.trimmed().toLower();
+      tls.enabled = !(v == "0" || v == "false" || v == "no" || v == "off");
     }
-    if(const auto v = env_str("CA_CERTS"))
+    if(QString v = qEnvironmentVariable("WEBIO_CA_CERTS"); !v.isNull())
     {
-      tls.ca_bundle = webio::trim(*v);
+      tls.ca_bundle = v.trimmed();
     }
 
     m_http = std::make_unique<webio::HttpClient>(tls);

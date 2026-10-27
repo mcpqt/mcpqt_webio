@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <filesystem>
+#include <QString>
 
 namespace webio
 {
@@ -12,8 +12,7 @@ namespace webio
   struct TlsVerify
   {
     bool enabled = true;
-    std::filesystem::path
-        ca_bundle; // when non-empty (and enabled), trust this PEM file
+    QString ca_bundle; // when non-empty (and enabled), trust this PEM file
   };
 
 } // namespace webio

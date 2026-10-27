@@ -16,14 +16,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network)
 # requests and returns responses verbatim.
 set(WEBIO_NET_SOURCES
     src/net/http_client.cpp
-    src/net/net_utils.cpp
 )
 
 set(WEBIO_NET_HEADERS
     src/net/errors.h
     src/net/http_client.h
     src/net/http_response.h
-    src/net/net_utils.h
     src/net/tls_verify.h
 )
 

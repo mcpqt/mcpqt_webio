@@ -2,7 +2,6 @@
 
 #include "http_client.h"
 
-#include "net_utils.h"
 #include "errors.h"
 
 #include <QMetaObject>
@@ -24,11 +23,10 @@ namespace webio
     {
       cfg.setPeerVerifyMode(QSslSocket::VerifyNone);
     }
-    else if(!verify.ca_bundle.empty())
+    else if(!verify.ca_bundle.isNull() &&
+            !verify.ca_bundle.isEmpty())
     {
-      const auto certs = QSslCertificate::fromPath(
-          QString::fromStdString(verify.ca_bundle.string()));
-      cfg.setCaCertificates(certs);
+      cfg.setCaCertificates(QSslCertificate::fromPath(verify.ca_bundle));
     }
     req.setSslConfiguration(cfg);
   }

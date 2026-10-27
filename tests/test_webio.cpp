@@ -5,7 +5,6 @@
 #include <QtTest>
 
 #include "http_client.h"
-#include "net_utils.h"
 #include "tls_verify.h"
 
 #include <QCoreApplication>
@@ -199,9 +198,6 @@ private slots:
   void initTestCase();
   void cleanupTestCase();
 
-  void trimHelper();
-  void toLowerHelper();
-
   void getReturnsStatusHeadersAndBody();
   void getSendsCustomHeaders();
   void getDoesNotFollowRedirects();
@@ -226,27 +222,6 @@ void WebioTest::initTestCase()
 void WebioTest::cleanupTestCase()
 {
   m_server.close();
-}
-
-void WebioTest::trimHelper()
-{
-  QCOMPARE(QString::fromStdString(webio::trim("  hello  ")),
-           QStringLiteral("hello"));
-  QCOMPARE(QString::fromStdString(webio::trim("\t\n hello \r\n")),
-           QStringLiteral("hello"));
-  QCOMPARE(QString::fromStdString(webio::trim("")), QString());
-  QCOMPARE(QString::fromStdString(webio::trim("   ")), QString());
-  QCOMPARE(QString::fromStdString(webio::trim("hello")),
-           QStringLiteral("hello"));
-}
-
-void WebioTest::toLowerHelper()
-{
-  QCOMPARE(QString::fromStdString(webio::to_lower("HeLLo")),
-           QStringLiteral("hello"));
-  QCOMPARE(QString::fromStdString(webio::to_lower("ABC123")),
-           QStringLiteral("abc123"));
-  QCOMPARE(QString::fromStdString(webio::to_lower("")), QString());
 }
 
 void WebioTest::getReturnsStatusHeadersAndBody()
