@@ -129,10 +129,10 @@ private:
     }
 
     int contentLength = 0;
-    if(m_lastHeaders.contains(QStringLiteral("content-length")))
+    if(m_lastHeaders.contains("content-length"))
     {
       contentLength
-          = m_lastHeaders.value(QStringLiteral("content-length")).toInt();
+          = m_lastHeaders.value("content-length").toInt();
     }
     if(m_lastRequest.size() < headerEnd + 4 + contentLength)
     {
@@ -235,18 +235,18 @@ void WebioTest::getReturnsStatusHeadersAndBody()
   m_server.setCloseWithoutResponse(false);
 
   webio::HttpClient client(webio::TlsVerify{});
-  const QUrl url(QStringLiteral("http://127.0.0.1:%1/test")
+  const QUrl url(QString("http://127.0.0.1:%1/test")
                      .arg(m_server.port()));
   const QVariant result = waitForFuture(client.get(url.toString()));
   QVERIFY(result.isValid());
 
   const QVariantMap map = result.toMap();
-  QCOMPARE(map.value(QStringLiteral("status")).toInt(), 200);
-  QCOMPARE(map.value(QStringLiteral("body")).toString(),
-           QStringLiteral("hello world"));
-  const QVariantMap headers = map.value(QStringLiteral("headers")).toMap();
-  QCOMPARE(headers.value(QStringLiteral("content-type")).toString(),
-           QStringLiteral("text/plain"));
+  QCOMPARE(map.value("status").toInt(), 200);
+  QCOMPARE(map.value("body").toString(),
+           "hello world");
+  const QVariantMap headers = map.value("headers").toMap();
+  QCOMPARE(headers.value("content-type").toString(),
+           "text/plain");
 }
 
 void WebioTest::getSendsCustomHeaders()
@@ -256,14 +256,14 @@ void WebioTest::getSendsCustomHeaders()
   m_server.setResponse(response);
 
   webio::HttpClient client(webio::TlsVerify{});
-  const QUrl url(QStringLiteral("http://127.0.0.1:%1/headers")
+  const QUrl url(QString("http://127.0.0.1:%1/headers")
                      .arg(m_server.port()));
   QMap<QString, QString> headers;
-  headers.insert(QStringLiteral("X-Test"), QStringLiteral("value"));
+  headers.insert("X-Test", "value");
   const QVariant result = waitForFuture(client.get(url.toString(), headers));
   QVERIFY(result.isValid());
-  QCOMPARE(m_server.lastHeaders().value(QStringLiteral("x-test")),
-           QStringLiteral("value"));
+  QCOMPARE(m_server.lastHeaders().value("x-test"),
+           "value");
 }
 
 void WebioTest::getDoesNotFollowRedirects()
@@ -275,14 +275,14 @@ void WebioTest::getDoesNotFollowRedirects()
   m_server.setResponse(response);
 
   webio::HttpClient client(webio::TlsVerify{});
-  const QUrl url(QStringLiteral("http://127.0.0.1:%1/redirect")
+  const QUrl url(QString("http://127.0.0.1:%1/redirect")
                      .arg(m_server.port()));
   const QVariant result = waitForFuture(client.get(url.toString()));
   QVERIFY(result.isValid());
   const QVariantMap map = result.toMap();
-  QCOMPARE(map.value(QStringLiteral("status")).toInt(), 302);
-  QCOMPARE(map.value(QStringLiteral("location")).toString(),
-           QStringLiteral("http://example.com/next"));
+  QCOMPARE(map.value("status").toInt(), 302);
+  QCOMPARE(map.value("location").toString(),
+           "http://example.com/next");
 }
 
 void WebioTest::getConnectionRefusedReturnsError()
@@ -293,12 +293,12 @@ void WebioTest::getConnectionRefusedReturnsError()
   probe.close();
 
   webio::HttpClient client(webio::TlsVerify{});
-  const QUrl url(QStringLiteral("http://127.0.0.1:%1/").arg(closedPort));
+  const QUrl url(QString("http://127.0.0.1:%1/").arg(closedPort));
   const QVariant result = waitForFuture(client.get(url.toString(), {}, 1000));
   QVERIFY(result.isValid());
   const QVariantMap map = result.toMap();
-  QCOMPARE(map.value(QStringLiteral("ok")).toBool(), false);
-  QVERIFY(map.contains(QStringLiteral("error")));
+  QCOMPARE(map.value("ok").toBool(), false);
+  QVERIFY(map.contains("error"));
 }
 
 void WebioTest::getTimeoutReturnsError()
@@ -310,15 +310,15 @@ void WebioTest::getTimeoutReturnsError()
 
   webio::HttpClient client(webio::TlsVerify{});
   const QUrl url(
-      QStringLiteral("http://127.0.0.1:%1/slow").arg(m_server.port()));
+      QString("http://127.0.0.1:%1/slow").arg(m_server.port()));
   const QVariant result
       = waitForFuture(client.get(url.toString(), {}, 200), 3000);
   QVERIFY(result.isValid());
   const QVariantMap map = result.toMap();
-  QCOMPARE(map.value(QStringLiteral("ok")).toBool(), false);
-  QVERIFY(map.value(QStringLiteral("error"))
+  QCOMPARE(map.value("ok").toBool(), false);
+  QVERIFY(map.value("error")
               .toString()
-              .contains(QStringLiteral("timed out"), Qt::CaseInsensitive));
+              .contains("timed out", Qt::CaseInsensitive));
 
   m_server.setDelay(0);
 }
@@ -331,21 +331,21 @@ void WebioTest::postFormSendsEncodedBody()
 
   webio::HttpClient client(webio::TlsVerify{});
   const QUrl url(
-      QStringLiteral("http://127.0.0.1:%1/post").arg(m_server.port()));
+      QString("http://127.0.0.1:%1/post").arg(m_server.port()));
   QMap<QString, QString> form;
-  form.insert(QStringLiteral("name"), QStringLiteral("Jane Doe"));
-  form.insert(QStringLiteral("email"),
-              QStringLiteral("jane+doe@example.com"));
+  form.insert("name", "Jane Doe");
+  form.insert("email",
+              "jane+doe@example.com");
   const QVariant result
       = waitForFuture(client.post_form(url.toString(), form));
   QVERIFY(result.isValid());
   const QVariantMap map = result.toMap();
-  QCOMPARE(map.value(QStringLiteral("status")).toInt(), 200);
-  QCOMPARE(map.value(QStringLiteral("body")).toString(),
-           QStringLiteral("posted"));
-  QCOMPARE(m_server.lastMethod(), QStringLiteral("POST"));
-  QCOMPARE(m_server.lastHeaders().value(QStringLiteral("content-type")),
-           QStringLiteral("application/x-www-form-urlencoded"));
+  QCOMPARE(map.value("status").toInt(), 200);
+  QCOMPARE(map.value("body").toString(),
+           "posted");
+  QCOMPARE(m_server.lastMethod(), "POST");
+  QCOMPARE(m_server.lastHeaders().value("content-type"),
+           "application/x-www-form-urlencoded");
   const QByteArray body = m_server.lastBody();
   QVERIFY(body.contains("name=Jane+Doe") || body.contains("name=Jane%20Doe"));
   QVERIFY(body.contains("email=jane%2Bdoe%40example.com"));
@@ -359,22 +359,22 @@ void WebioTest::postFormSendsCustomHeaders()
 
   webio::HttpClient client(webio::TlsVerify{});
   const QUrl url(
-      QStringLiteral("http://127.0.0.1:%1/post").arg(m_server.port()));
+      QString("http://127.0.0.1:%1/post").arg(m_server.port()));
   QMap<QString, QString> form;
-  form.insert(QStringLiteral("q"), QStringLiteral("test"));
+  form.insert("q", "test");
   QMap<QString, QString> headers;
-  headers.insert(QStringLiteral("X-Custom"), QStringLiteral("yes"));
+  headers.insert("X-Custom", "yes");
   const QVariant result
       = waitForFuture(client.post_form(url.toString(), form, headers));
   QVERIFY(result.isValid());
-  QCOMPARE(m_server.lastHeaders().value(QStringLiteral("x-custom")),
-           QStringLiteral("yes"));
+  QCOMPARE(m_server.lastHeaders().value("x-custom"),
+           "yes");
 }
 
 #ifdef WEBIO_PLUGIN_PATH
 void WebioTest::pluginLoadsAndExposesHttpGet()
 {
-  QPluginLoader loader(QStringLiteral(WEBIO_PLUGIN_PATH));
+  QPluginLoader loader(WEBIO_PLUGIN_PATH);
   QVERIFY2(loader.load(), qPrintable(loader.errorString()));
 
   QObject* instance = loader.instance();
@@ -398,7 +398,7 @@ void WebioTest::pluginLoadsAndExposesHttpGet()
   response.body = "from plugin";
   m_server.setResponse(response);
   const QUrl url(
-      QStringLiteral("http://127.0.0.1:%1/plugin").arg(m_server.port()));
+      QString("http://127.0.0.1:%1/plugin").arg(m_server.port()));
 
   QFuture<QVariant> future;
   const bool invoked = QMetaObject::invokeMethod(
@@ -410,10 +410,10 @@ void WebioTest::pluginLoadsAndExposesHttpGet()
   const QVariant result = waitForFuture(future);
   QVERIFY(result.isValid());
   const QVariantMap map = result.toMap();
-  QCOMPARE(map.value(QStringLiteral("ok")).toBool(), true);
-  QCOMPARE(map.value(QStringLiteral("status")).toInt(), 200);
-  QCOMPARE(map.value(QStringLiteral("body")).toString(),
-           QStringLiteral("from plugin"));
+  QCOMPARE(map.value("ok").toBool(), true);
+  QCOMPARE(map.value("status").toInt(), 200);
+  QCOMPARE(map.value("body").toString(),
+           "from plugin");
 
   plugin->shutdown();
   QVERIFY(loader.unload());

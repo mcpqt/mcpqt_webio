@@ -51,8 +51,8 @@ static QMap<QString, QString> to_string_map(const QVariant& value)
 static QVariant error_result(const QString& message)
 {
   QVariantMap result;
-  result.insert(QStringLiteral("ok"), false);
-  result.insert(QStringLiteral("error"), message);
+  result.insert("ok", false);
+  result.insert("error", message);
   return result;
 }
 
@@ -134,19 +134,19 @@ private:
         {
           if(finished.isCanceled())
           {
-            promise->addResult(error_result(QStringLiteral("request canceled")));
+            promise->addResult(error_result("request canceled"));
           }
           else
           {
             const QVariant raw = finished.result();
             if(!raw.isValid())
             {
-              promise->addResult(error_result(QStringLiteral("no response")));
+              promise->addResult(error_result("no response"));
             }
             else
             {
               QVariantMap map = raw.toMap();
-              map.insert(QStringLiteral("ok"), true);
+              map.insert("ok", true);
               promise->addResult(map);
             }
           }

@@ -56,10 +56,10 @@ namespace webio
       headers.insert(it.key(), it.value());
 
     QVariantMap result;
-    result.insert(QStringLiteral("status"), response.status);
-    result.insert(QStringLiteral("body"), QString::fromUtf8(response.body));
-    result.insert(QStringLiteral("headers"), headers);
-    result.insert(QStringLiteral("location"), response.location);
+    result.insert("status", response.status);
+    result.insert("body", QString::fromUtf8(response.body));
+    result.insert("headers", headers);
+    result.insert("location", response.location);
     return result;
   }
 
@@ -122,7 +122,7 @@ namespace webio
   {
     QNetworkRequest req = make_request(url, headers, timeout_ms, m_verify);
     req.setHeader(QNetworkRequest::ContentTypeHeader,
-                  QStringLiteral("application/x-www-form-urlencoded"));
+                  "application/x-www-form-urlencoded");
     return make_promise(m_netman.post(req, url_form_encode(form)));
   }
 
@@ -130,10 +130,10 @@ namespace webio
                    QString message, QString default_message)
   {
     QVariantMap result;
-    result.insert(QStringLiteral("ok"), false);
+    result.insert("ok", false);
     if(message.isEmpty())
-      result.insert(QStringLiteral("error"), default_message);
-    result.insert(QStringLiteral("error"), message);
+      result.insert("error", default_message);
+    result.insert("error", message);
     promise->addResult(result);
   }
 
@@ -151,7 +151,7 @@ namespace webio
       for(const auto& [k, v] : reply->rawHeaderPairs())
         res.headers.insert(QString::fromLatin1(k).toLower(),
                            QString::fromLatin1(v));
-      res.location = res.headers.value(QStringLiteral("location"));
+      res.location = res.headers.value("location");
       res.body = reply->readAll();
 
       const QNetworkReply::NetworkError err = reply->error();
