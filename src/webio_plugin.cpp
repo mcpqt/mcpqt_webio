@@ -14,6 +14,7 @@
 #include "net/tls_verify.h"
 
 #include <QFuture>
+#include <QMetaType>
 #include <QObject>
 #include <QPromise>
 #include <QString>
@@ -41,6 +42,12 @@ static std::optional<std::string> env_str(const char* name)
 static QMap<QString, QString> to_string_map(const QVariant& value)
 {
   QMap<QString, QString> result;
+  // The host marshals QVariant parameters by wrapping the supplied QVariantMap
+  // in a QVariant-typed QVariant. Unwrap it before reading the map.
+  if(value.metaType() == QMetaType::fromType<QVariant>())
+  {
+    return to_string_map(value.value<QVariant>());
+  }
   if(!value.canConvert<QVariantMap>())
   {
     return result;
@@ -126,19 +133,38 @@ public slots:
 
 private:
   QFuture<QVariant> complete(QFuture<QVariant> future)
-  {    
-    return future.then(
-        [](QFuture<QVariant> finished) -> QVariant
+  {
+    // Do not return future.then(...) directly: Qt returns an invalid QFuture
+    // from then() while the input future is still pending. The host marshals
+    // the return value immediately, so an invalid future would be wrapped into
+    // the QVariant and rejected by callers before the request completes.
+    auto promise = std::make_shared<QPromise<QVariant>>();
+    promise->start();
+    QFuture<QVariant> result = promise->future();
+    future.then(
+        [promise](QFuture<QVariant> finished)
         {
           if(finished.isCanceled())
-            return error_result(QStringLiteral("request canceled"));
-          const QVariant raw = finished.result();
-          if(!raw.isValid())
-            return error_result(QStringLiteral("no response"));
-          QVariantMap result = raw.toMap();
-          result.insert(QStringLiteral("ok"), true);
-          return result;
+          {
+            promise->addResult(error_result(QStringLiteral("request canceled")));
+          }
+          else
+          {
+            const QVariant raw = finished.result();
+            if(!raw.isValid())
+            {
+              promise->addResult(error_result(QStringLiteral("no response")));
+            }
+            else
+            {
+              QVariantMap map = raw.toMap();
+              map.insert(QStringLiteral("ok"), true);
+              promise->addResult(map);
+            }
+          }
+          promise->finish();
         });
+    return result;
   }
 
   std::unique_ptr<webio::HttpClient> m_http;
